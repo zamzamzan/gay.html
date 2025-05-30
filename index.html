@@ -1,92 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Discord Webhook Sender</title>
   <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
     body {
-      font-family: Arial, sans-serif;
-      background-color: #202225;
-      color: white;
-      padding: 20px;
+      background: #0f0f10;
+      color: #f1f1f1;
+      margin: 0;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      background: rgba(32, 34, 37, 0.85);
+      border-radius: 15px;
+      padding: 30px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #7289da;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin: 10px 0 5px;
     }
     input, textarea, button {
       width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-      border-radius: 5px;
+      padding: 12px;
+      margin-bottom: 10px;
       border: none;
-      font-size: 16px;
-    }
-    input, textarea {
-      background-color: #2f3136;
-      color: white;
+      border-radius: 8px;
+      background: #1e1f22;
+      color: #fff;
+      font-size: 15px;
     }
     button {
-      background-color: #7289da;
-      color: white;
       cursor: pointer;
+      transition: 0.2s;
     }
-    button:hover {
-      background-color: #5b6eae;
+    .loopBtn.start {
+      background: #7289da;
     }
-    label {
-      display: block;
-      margin-top: 10px;
+    .loopBtn.start:hover {
+      background: #5b6eae;
+    }
+    .loopBtn.stop {
+      background: #da4f4f;
+    }
+    .loopBtn.stop:hover {
+      background: #c13e3e;
     }
     .row {
       display: flex;
       gap: 10px;
     }
-    .row input {
+    .row input, .row button {
       flex: 1;
     }
-    #log {
-      background-color: #2f3136;
+    .log {
+      background: #1e1f22;
       padding: 10px;
-      border-radius: 5px;
-      margin-top: 20px;
+      margin-top: 15px;
+      border-radius: 8px;
       max-height: 200px;
       overflow-y: auto;
-      font-family: monospace;
       white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+      opacity: 0.7;
     }
   </style>
 </head>
 <body>
-  <h2>Discord Webhook Sender</h2>
+  <div class="container">
+    <h1>🔗 Webhook Sender</h1>
 
-  <label>Webhook URL</label>
-  <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+    <label for="webhookUrl">Webhook URL</label>
+    <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/..." />
 
-  <label>Username (optional)</label>
-  <input type="text" id="username" placeholder="Bot Name">
+    <label for="username">Username (optional)</label>
+    <input type="text" id="username" placeholder="Bot name" />
 
-  <label>Avatar URL (optional)</label>
-  <input type="text" id="avatarUrl" placeholder="https://example.com/avatar.png">
+    <label for="avatarUrl">Avatar URL (optional)</label>
+    <input type="text" id="avatarUrl" placeholder="https://..." />
 
-  <label>Message</label>
-  <textarea id="messageContent" rows="5" placeholder="Your message here..."></textarea>
+    <label for="messageContent">Message</label>
+    <textarea id="messageContent" rows="4" placeholder="Your message here..."></textarea>
 
-  <button onclick="sendWebhook()">Send Message</button>
+    <div class="row">
+      <input type="number" id="cooldown" step="0.1" value="1" min="0.1" placeholder="Cooldown in seconds" />
+      <button id="loopButton" class="loopBtn start" onclick="toggleLoop()">Start Loop</button>
+    </div>
 
-  <label><input type="checkbox" id="loopToggle"> Loop Sending Message</label>
-  <div class="row">
-    <input type="number" id="cooldown" placeholder="Cooldown in seconds" value="3" min="1">
-    <button onclick="stopLoop()">Stop Loop</button>
+    <div class="row">
+      <button onclick="sendWebhook()">Send Once</button>
+      <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="log" id="log"></div>
+    <div class="status" id="status">Status: Idle</div>
   </div>
-
-  <h3>Log</h3>
-  <div id="log"></div>
 
   <script>
     let loopInterval = null;
 
     function logMessage(msg) {
-      const logBox = document.getElementById("log");
+      const log = document.getElementById("log");
       const timestamp = new Date().toLocaleTimeString();
-      logBox.textContent += `[${timestamp}] ${msg}\n`;
-      logBox.scrollTop = logBox.scrollHeight;
+      log.textContent += `[${timestamp}] ${msg}\n`;
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function clearLog() {
+      document.getElementById("log").textContent = "";
+    }
+
+    function updateStatus(text) {
+      document.getElementById("status").textContent = "Status: " + text;
     }
 
     function sendWebhook() {
@@ -100,54 +144,59 @@
         return;
       }
 
-      const payload = {
-        content: content,
-      };
-
+      const payload = { content };
       if (username) payload.username = username;
       if (avatarUrl) payload.avatar_url = avatarUrl;
 
       fetch(url, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       })
-      .then((response) => {
-        if (response.ok) {
-          logMessage(`✅ Sent message: ${content}`);
-        } else {
-          logMessage(`❌ Failed to send message. HTTP ${response.status}`);
-        }
-      })
-      .catch((error) => {
-        logMessage(`❌ Error: ${error.message}`);
-      });
+        .then((res) => {
+          if (res.ok) {
+            logMessage(`✅ Sent: ${content}`);
+            updateStatus("Message sent");
+          } else {
+            logMessage(`❌ Failed (HTTP ${res.status})`);
+            updateStatus("Failed");
+          }
+        })
+        .catch((err) => {
+          logMessage(`❌ Error: ${err.message}`);
+          updateStatus("Error");
+        });
     }
 
-    document.getElementById("loopToggle").addEventListener("change", function () {
-      if (this.checked) {
-        const cooldownSec = parseInt(document.getElementById("cooldown").value);
-        if (isNaN(cooldownSec) || cooldownSec < 1) {
-          alert("Please enter a valid cooldown in seconds.");
-          this.checked = false;
-          return;
-        }
-
-        sendWebhook(); // Send immediately
-        loopInterval = setInterval(sendWebhook, cooldownSec * 1000);
-        logMessage(`🔁 Loop started (every ${cooldownSec} sec)`);
-      } else {
-        stopLoop();
+    function toggleLoop() {
+      const btn = document.getElementById("loopButton");
+      if (loopInterval) {
+        clearInterval(loopInterval);
+        loopInterval = null;
+        btn.textContent = "Start Loop";
+        btn.classList.remove("stop");
+        btn.classList.add("start");
+        updateStatus("Idle");
+        logMessage("🛑 Loop stopped");
+        return;
       }
-    });
 
-    function stopLoop() {
-      clearInterval(loopInterval);
-      loopInterval = null;
-      document.getElementById("loopToggle").checked = false;
-      logMessage("🛑 Loop stopped.");
+      const delay = parseFloat(document.getElementById("cooldown").value);
+      if (isNaN(delay) || delay < 0.1) {
+        alert("Enter a valid delay in seconds (e.g. 0.1).");
+        return;
+      }
+
+      sendWebhook();
+      loopInterval = setInterval(() => {
+        sendWebhook();
+      }, delay * 1000);
+
+      btn.textContent = "Stop Loop";
+      btn.classList.remove("start");
+      btn.classList.add("stop");
+      updateStatus(`Looping every ${delay}s`);
+      logMessage(`🔁 Loop started (every ${delay}s)`);
     }
   </script>
 </body>
