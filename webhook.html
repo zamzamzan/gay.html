@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Discord Webhook Sender</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #202225;
+      color: white;
+      padding: 20px;
+    }
+    input, textarea, button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+    input, textarea {
+      background-color: #2f3136;
+      color: white;
+    }
+    button {
+      background-color: #7289da;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #5b6eae;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+    }
+    .row input {
+      flex: 1;
+    }
+    #log {
+      background-color: #2f3136;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 20px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h2>Discord Webhook Sender</h2>
+
+  <label>Webhook URL</label>
+  <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/...">
+
+  <label>Username (optional)</label>
+  <input type="text" id="username" placeholder="Bot Name">
+
+  <label>Avatar URL (optional)</label>
+  <input type="text" id="avatarUrl" placeholder="https://example.com/avatar.png">
+
+  <label>Message</label>
+  <textarea id="messageContent" rows="5" placeholder="Your message here..."></textarea>
+
+  <button onclick="sendWebhook()">Send Message</button>
+
+  <label><input type="checkbox" id="loopToggle"> Loop Sending Message</label>
+  <div class="row">
+    <input type="number" id="cooldown" placeholder="Cooldown in seconds" value="3" min="1">
+    <button onclick="stopLoop()">Stop Loop</button>
+  </div>
+
+  <h3>Log</h3>
+  <div id="log"></div>
+
+  <script>
+    let loopInterval = null;
+
+    function logMessage(msg) {
+      const logBox = document.getElementById("log");
+      const timestamp = new Date().toLocaleTimeString();
+      logBox.textContent += `[${timestamp}] ${msg}\n`;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function sendWebhook() {
+      const url = document.getElementById("webhookUrl").value;
+      const content = document.getElementById("messageContent").value;
+      const username = document.getElementById("username").value;
+      const avatarUrl = document.getElementById("avatarUrl").value;
+
+      if (!url || !content) {
+        alert("Webhook URL and message are required.");
+        return;
+      }
+
+      const payload = {
+        content: content,
+      };
+
+      if (username) payload.username = username;
+      if (avatarUrl) payload.avatar_url = avatarUrl;
+
+      fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+      .then((response) => {
+        if (response.ok) {
+          logMessage(`✅ Sent message: ${content}`);
+        } else {
+          logMessage(`❌ Failed to send message. HTTP ${response.status}`);
+        }
+      })
+      .catch((error) => {
+        logMessage(`❌ Error: ${error.message}`);
+      });
+    }
+
+    document.getElementById("loopToggle").addEventListener("change", function () {
+      if (this.checked) {
+        const cooldownSec = parseInt(document.getElementById("cooldown").value);
+        if (isNaN(cooldownSec) || cooldownSec < 1) {
+          alert("Please enter a valid cooldown in seconds.");
+          this.checked = false;
+          return;
+        }
+
+        sendWebhook(); // Send immediately
+        loopInterval = setInterval(sendWebhook, cooldownSec * 1000);
+        logMessage(`🔁 Loop started (every ${cooldownSec} sec)`);
+      } else {
+        stopLoop();
+      }
+    });
+
+    function stopLoop() {
+      clearInterval(loopInterval);
+      loopInterval = null;
+      document.getElementById("loopToggle").checked = false;
+      logMessage("🛑 Loop stopped.");
+    }
+  </script>
+</body>
+</html>
